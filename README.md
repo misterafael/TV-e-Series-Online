@@ -9,6 +9,15 @@ Aplicativo Android para reunir fontes autorizadas de TV ao vivo, filmes e série
 
 Não existe um formato universal para todos os fornecedores. APIs privadas, formatos proprietários ou criptografados exigem documentação e autorização do fornecedor. O aplicativo não contorna DRM, criptografia, autenticação ou bloqueios regionais. Importação de arquivos locais e APIs proprietárias não documentadas ainda não estão incluídas.
 
+
+## Detecção e descoberta de fontes
+
+- O aplicativo agora possui um detector inicial de formatos por endereço e conteúdo para M3U, M3U8, XMLTV, possíveis APIs Xtream e endpoints JSON.
+- A detecção pelo endereço é apenas uma indicação; a resposta precisa ser validada antes de ser importada.
+- XMLTV é reconhecido como formato de guia, mas a associação do EPG aos canais ainda precisa ser integrada à interface e ao banco de dados.
+- Arquivos locais e adaptadores de APIs JSON/proprietárias ainda precisam de integração específica.
+- A busca automática na internet por listas públicas deve usar um catálogo curado de fontes com licença e autorização verificáveis. Ela não deve raspar diretórios aleatórios nem cadastrar automaticamente links sem verificar origem, direitos e segurança. O catálogo curado e sua atualização remota ainda precisam ser implementados; não há uma lista pública universal confiável que possa ser adicionada sem validação.
+
 ## Funcionalidades
 
 - Interface em Kotlin + Jetpack Compose com áreas de TV ao vivo, filmes e séries.
