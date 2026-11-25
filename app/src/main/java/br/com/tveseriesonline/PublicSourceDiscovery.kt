@@ -55,9 +55,19 @@ object PublicSourceDiscovery {
         }
         try {
             require(connection.responseCode in 200..299) { "HTTP ${connection.responseCode}" }
-            val bytes = connection.inputStream.use { it.readNBytes(12 * 1024 * 1024 + 1) }
-            require(bytes.size <= 12 * 1024 * 1024) { "Playlist excede 12 MB." }
-            return bytes.toString(Charsets.UTF_8)
+            val output = java.io.ByteArrayOutputStream()
+            connection.inputStream.use { input ->
+                val buffer = ByteArray(8 * 1024)
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    require(total <= 12 * 1024 * 1024) { "Playlist excede 12 MB." }
+                    output.write(buffer, 0, count)
+                }
+            }
+            return output.toString(Charsets.UTF_8.name())
         } finally {
             connection.disconnect()
         }
