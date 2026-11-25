@@ -60,6 +60,8 @@ class ChannelDatabase(context: Context) :
         }
     }
 
+    fun clearCatalog() { writableDatabase.delete("channels", null, null) }
+
     fun getChannels(): List<Channel> {
         val result = mutableListOf<Channel>()
         readableDatabase.rawQuery(
