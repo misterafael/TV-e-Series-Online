@@ -58,11 +58,11 @@ jobs:
           else
             gradle assembleRelease
           fi
-          cp app/build/outputs/apk/release/app-release.apk "tv-e-series-online-${VERSION_NAME:-test}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "tv-filme-e-cinema-${VERSION_NAME:-test}.apk"
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: tv-e-series-online-*.apk
+          files: tv-filme-e-cinema-*.apk
           generate_release_notes: true
