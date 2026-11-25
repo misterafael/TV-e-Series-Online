@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -142,7 +143,7 @@ private fun HomeScreen() {
                     OutlinedTextField(value = username, onValueChange = { username = it }, modifier = Modifier.fillMaxWidth(),
                         label = { Text("Usuário") }, singleLine = true)
                     OutlinedTextField(value = password, onValueChange = { password = it }, modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Senha") }, singleLine = true)
+                        label = { Text("Senha") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
                     Button(enabled = server.isNotBlank() && username.isNotBlank() && password.isNotBlank(), onClick = {
                         runCatching { VodRepository.addAccount(context,server,username,password) }
                             .onSuccess { server=""; username=""; password=""; reloadCatalog(); status="Conta Xtream cadastrada." }
