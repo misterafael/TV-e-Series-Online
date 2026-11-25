@@ -156,7 +156,9 @@ private fun HomeScreen() {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(source, color = Color(0xFFADB6C8), fontSize = 10.sp, modifier = Modifier.weight(1f))
                                 Text("Remover", color = Color(0xFFFF8A80), modifier = Modifier.clickable {
-                                    MultiSourceRepository.removeSource(context,source); reloadCatalog()
+                                    MultiSourceRepository.removeSource(context,source)
+                                    if (MultiSourceRepository.getSources(context).isEmpty()) ChannelDatabase(context).use { it.clearCatalog() }
+                                    reloadCatalog()
                                 }.padding(8.dp))
                             }
                         }
