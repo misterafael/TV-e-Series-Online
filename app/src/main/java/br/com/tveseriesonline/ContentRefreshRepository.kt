@@ -23,7 +23,9 @@ object ContentRefreshRepository {
 
         if (hasM3u) {
             try {
-                m3uCount = MultiSourceRepository.refreshAll(context).channelCount
+                val m3uResult = MultiSourceRepository.refreshAll(context)
+                m3uCount = m3uResult.channelCount
+                errors += m3uResult.errors
                 m3uSuccess = true
             } catch (e: Exception) { errors += "M3U/M3U8: ${e.message ?: "falha"}" }
         }
