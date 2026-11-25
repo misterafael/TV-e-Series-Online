@@ -3,8 +3,8 @@ package br.com.tveseriesonline
 import java.net.URI
 
 object M3uParser {
-    private val quotedAttribute = Regex("""([\\w-]+)\\s*=\\s*"([^"]*)"""")
-    private val plainAttribute = Regex("""([\\w-]+)\\s*=\\s*([^\\s,]+)""")
+    private val quotedAttribute = Regex("""([\w-]+)\s*=\s*"([^"]*)""")
+    private val plainAttribute = Regex("""([\w-]+)\s*=\s*([^\s,]+)""")
 
     fun parse(content: String): List<Channel> {
         val normalized = content.removePrefix("\uFEFF")
