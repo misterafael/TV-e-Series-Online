@@ -189,7 +189,7 @@ private class VodStore(context: Context): SQLiteOpenHelper(context,"tv_series_vo
         val contentPrefix=account.id+"|"
         db.delete("movies","substr(id,1,?)=?",arrayOf(contentPrefix.length.toString(),contentPrefix))
         db.delete("series","substr(id,1,?)=?",arrayOf(contentPrefix.length.toString(),contentPrefix))
-        val livePrefix=account.server+"/live/"+enc(account.username)+"/"
+        val livePrefix=account.server+"/live/"+URLEncoder.encode(account.username,"UTF-8")+"/"
         db.delete("xtream_live","substr(url,1,?)=?",arrayOf(livePrefix.length.toString(),livePrefix))
     }
     fun movies():List<VodMovie> {
