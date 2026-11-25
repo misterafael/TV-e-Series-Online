@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -54,14 +55,14 @@ object VodRepository {
         accounts.forEachIndexed { index, account ->
             try {
                 val liveCats = categories(account, "get_live_categories")
-                api(account,"get_live_streams").objects().forEach { o ->
+                apiArray(account,"get_live_streams").forEach { o ->
                     val id=o.optString("stream_id")
                     if(id.isNotBlank()) live += Channel(streamUrl(account,"live",id,null),o.optString("name"),
                         liveCats[o.optString("category_id")] ?: "Ao vivo",o.optString("stream_icon").ifBlank { null },
                         o.optString("epg_channel_id").ifBlank { null })
                 }
                 val movieCats = categories(account,"get_vod_categories")
-                api(account,"get_vod_streams").objects().forEach { o ->
+                apiArray(account,"get_vod_streams").forEach { o ->
                     val id=o.optString("stream_id")
                     if(id.isNotBlank()) movies += VodMovie(account.id+"|movie|"+id,o.optString("name"),
                         o.optString("stream_icon").ifBlank { null },o.optString("plot").ifBlank { null },
@@ -70,7 +71,7 @@ object VodRepository {
                         o.optString("container_extension").ifBlank { null })
                 }
                 val seriesCats = categories(account,"get_series_categories")
-                api(account,"get_series").objects().forEach { o ->
+                apiArray(account,"get_series").forEach { o ->
                     val id=o.optString("series_id")
                     if(id.isNotBlank()) series += VodSeries(account.id+"|series|"+id,o.optString("name"),
                         o.optString("cover").ifBlank { null },o.optString("plot").ifBlank { null },
@@ -91,7 +92,7 @@ object VodRepository {
 
     suspend fun episodes(context: Context, account: XtreamAccount, seriesIdWithPrefix: String): List<VodEpisode> {
         val id = seriesIdWithPrefix.substringAfterLast("|")
-        val response = api(account,"get_series_info","series_id" to id)
+        val response = apiObject(account,"get_series_info","series_id" to id)
         val seasons = response.optJSONObject("episodes") ?: JSONObject()
         val result = mutableListOf<VodEpisode>()
         val keys = seasons.keys()
@@ -116,9 +117,9 @@ object VodRepository {
     fun liveChannels(context: Context) = VodStore(context).use { it.live() }
 
     private fun categories(account: XtreamAccount, action: String): Map<String,String> =
-        api(account,action).objects().associate { it.optString("category_id") to it.optString("category_name") }
+        apiArray(account,action).associate { it.optString("category_id") to it.optString("category_name") }
 
-    private fun api(account: XtreamAccount, action: String, vararg params: Pair<String,String>): JSONObject {
+    private fun requestBody(account: XtreamAccount, action: String, params: Array<out Pair<String,String>>): String {
         val values = listOf("username" to account.username,"password" to account.password,"action" to action)+params
         val url=account.server+"/player_api.php?"+values.joinToString("&"){enc(it.first)+"="+enc(it.second)}
         val conn=(URL(url).openConnection() as HttpURLConnection).apply {
@@ -128,16 +129,18 @@ object VodRepository {
         }
         try {
             require(conn.responseCode in 200..299) { "Servidor respondeu HTTP ${conn.responseCode}" }
-            return JSONObject(conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() })
+            return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         } finally { conn.disconnect() }
     }
-
-    private fun JSONObject.objects(): List<JSONObject> {
-        val out=mutableListOf<JSONObject>()
-        // Xtream list actions normally return arrays, not objects.
-        return out
+    private fun apiArray(account: XtreamAccount, action: String): List<JSONObject> {
+        val value = JSONTokener(requestBody(account,action, emptyArray())).nextValue()
+        val array = value as? JSONArray ?: throw IllegalArgumentException("Resposta inválida para $action.")
+        return (0 until array.length()).mapNotNull { array.optJSONObject(it) }
     }
-    private fun categoriesArray(account: XtreamAccount, action: String): JSONArray = JSONArray()
+    private fun apiObject(account: XtreamAccount, action: String, vararg params: Pair<String,String>): JSONObject {
+        val value = JSONTokener(requestBody(account,action,params)).nextValue()
+        return value as? JSONObject ?: throw IllegalArgumentException("Resposta inválida para $action.")
+    }
     private fun streamUrl(a:XtreamAccount,type:String,id:String,extension:String?):String {
         val ext=extension?.takeIf { it.matches(Regex("[A-Za-z0-9]+")) } ?: if(type=="live") "" else "mp4"
         val base=a.server+"/$type/${enc(a.username)}/${enc(a.password)}/${enc(id)}"
