@@ -61,7 +61,7 @@ object VodRepository {
                 val liveCats = categories(account, "get_live_categories")
                 apiArray(account,"get_live_streams").forEach { o ->
                     val id=o.optString("stream_id")
-                    if(id.isNotBlank()) accountLive += Channel(streamUrl(account,"live",id,null),o.optString("name"),
+                    if(id.isNotBlank()) accountLive += Channel(streamUrl(account,"live",id,o.optString("container_extension").ifBlank { null }),o.optString("name"),
                         liveCats[o.optString("category_id")] ?: "Ao vivo",o.optString("stream_icon").ifBlank { null },
                         o.optString("epg_channel_id").ifBlank { null })
                 }
