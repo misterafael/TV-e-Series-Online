@@ -16,16 +16,18 @@ data class PublicVodSummary(
 
 /**
  * Descobre vídeos no Internet Archive. Só aceita itens cuja licença declarada
- * pelo responsável pelo envio seja domínio público, CC0, CC BY ou CC BY-SA.
+ * pelo responsável pelo envio seja domínio público, CC0 ou licença Creative Commons
+ * que permita redistribuição (BY, BY-SA ou BY-ND, versões 1.0 a 4.0).
+ * Licenças NC ficam de fora até haver confirmação de uso estritamente não comercial.
  * A licença é uma declaração do remetente e deve ser conferida na página do item.
  */
 object PublicVodDiscovery {
     private const val BASE = "https://archive.org"
-    private const val MAX_RESULTS_PER_CATEGORY = 12
+    private const val MAX_RESULTS_PER_CATEGORY = 50
     private val searches = listOf(
-        "Filmes" to "mediatype:movies AND (subject:film OR subject:movie OR title:film OR title:movie) AND licenseurl:[* TO *]",
-        "Séries" to "mediatype:movies AND (subject:television OR subject:series OR title:episode OR title:series) AND licenseurl:[* TO *]",
-        "Animes" to "mediatype:movies AND (subject:anime OR title:anime OR subject:animation) AND licenseurl:[* TO *]"
+        "Filmes" to "mediatype:movies AND (subject:film OR subject:films OR subject:movie OR subject:cinema OR title:film OR title:movie OR title:cinema OR subject:short film OR subject:documentary) AND licenseurl:[* TO *]",
+        "Séries" to "mediatype:movies AND (subject:television OR subject:tv series OR subject:web series OR subject:serial OR title:episode OR title:series OR title:season) AND licenseurl:[* TO *]",
+        "Animes" to "mediatype:movies AND (subject:anime OR subject:manga OR subject:japanese animation OR title:anime OR subject:animation) AND licenseurl:[* TO *]"
     )
 
     fun refresh(context: Context): PublicVodSummary {
@@ -98,12 +100,14 @@ object PublicVodDiscovery {
 
     private fun isAllowedLicense(value: String): Boolean {
         val license = value.lowercase()
-        return license.contains("publicdomain/mark") ||
-            license.contains("publicdomain/zero") ||
-            license.contains("creativecommons.org/licenses/by/4.0") ||
-            license.contains("creativecommons.org/licenses/by-sa/4.0") ||
-            license.contains("creativecommons.org/licenses/by/3.0") ||
-            license.contains("creativecommons.org/licenses/by-sa/3.0")
+        if (license.contains("publicdomain/mark") || license.contains("publicdomain/zero")) return true
+        val allowedTypes = listOf("by", "by-sa", "by-nd")
+        val versions = listOf("1.0", "2.0", "2.5", "3.0", "4.0")
+        return allowedTypes.any { type ->
+            versions.any { version ->
+                license.contains("creativecommons.org/licenses/$type/$version")
+            }
+        }
     }
 
     private fun get(address: String): String {
