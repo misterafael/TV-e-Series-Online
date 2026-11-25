@@ -77,7 +77,7 @@ object AppUpdateChecker {
 
     private fun download(context: Context, release: Release) {
         val request = DownloadManager.Request(Uri.parse(release.downloadUrl))
-            .setTitle("Atualização TV e Séries Online")
+            .setTitle("Atualização TV Filme e Cinema")
             .setDescription("Baixando versão ${release.version}")
             .setMimeType("application/vnd.android.package-archive")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
@@ -119,7 +119,7 @@ object AppUpdateChecker {
             requestMethod = "GET"
             setRequestProperty("Accept", "application/vnd.github+json")
             setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-            setRequestProperty("User-Agent", "TV-e-Series-Online-Android")
+            setRequestProperty("User-Agent", "TV-Filme-e-Cinema-Android")
         }
         try {
             if (connection.responseCode !in 200..299) error("GitHub HTTP ${connection.responseCode}")
