@@ -100,6 +100,7 @@ private fun HomeScreen() {
                 MultiSourceRepository.addSource(context, oldSource)
             }
             PublicSourceDiscovery.discoverAndRegister(context)
+            runCatching { ContentRefreshRepository.refreshAll(context) }
         }
         reloadCatalog()
     }
