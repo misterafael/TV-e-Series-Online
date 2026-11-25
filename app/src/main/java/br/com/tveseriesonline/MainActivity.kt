@@ -1,6 +1,10 @@
 package br.com.tveseriesonline
 
 import androidx.activity.ComponentActivity
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
@@ -46,15 +50,38 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+    private var updateReceiver: BroadcastReceiver? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RefreshScheduler.scheduleAutomatic(applicationContext)
+        updateReceiver = AppUpdateChecker.DownloadReceiver().also { receiver ->
+            val filter = IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                registerReceiver(receiver, filter)
+            }
+        }
+        AppUpdateChecker.checkOnLaunch(this)
         setContent {
             MaterialTheme(colorScheme = darkColorScheme(
                 background = Color(0xFF090B12), surface = Color(0xFF171B27),
                 primary = Color(0xFF5B8CFF)
             )) { HomeScreen() }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        AppUpdateChecker.resumeInstallIfReady(this)
+    }
+
+    override fun onDestroy() {
+        updateReceiver?.let { runCatching { unregisterReceiver(it) } }
+        updateReceiver = null
+        super.onDestroy()
     }
 }
 
