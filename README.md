@@ -1,44 +1,46 @@
 # TV e Séries Online
 
-Aplicativo Android para organizar e reproduzir canais, filmes e séries a partir de fontes públicas ou autorizadas pelo usuário.
+Aplicativo Android para reunir fontes autorizadas de TV ao vivo, filmes e séries.
 
-## Implementado nesta etapa
+## Fontes compatíveis nesta versão
 
-- Projeto Android em Kotlin + Jetpack Compose.
-- Cadastro de uma URL de playlist M3U/M3U8 por HTTP/HTTPS.
-- Parser de `#EXTINF`, nome, grupo/categoria, logo e ID EPG (`tvg-id`).
-- Importação de canais e remoção de itens antigos não favoritos.
-- Banco SQLite local para guardar os canais.
-- Favoritos persistidos e preservados mesmo quando uma atualização temporariamente não traz aquele canal.
-- Validação da lista antes de substituir o catálogo: uma URL inacessível ou uma playlist inválida não apaga os dados existentes.
-- Atualização manual e worker automático chamam o mesmo método de importação.
-- WorkManager configurado para solicitar atualização periódica a cada 6 horas.
+- **M3U/M3U8 por URL HTTP/HTTPS:** cadastro de várias playlists e importação de canais ao vivo.
+- **Xtream Codes compatível:** cadastro de várias contas com servidor, usuário e senha; importação de TV ao vivo, filmes, séries, temporadas e episódios.
 
-## Limitações conhecidas
+Não existe um formato universal para todos os fornecedores. APIs privadas, formatos proprietários ou criptografados exigem documentação e autorização do fornecedor. O aplicativo não contorna DRM, criptografia, autenticação ou bloqueios regionais. Importação de arquivos locais e APIs proprietárias não documentadas ainda não estão incluídas.
 
-- O cadastro de fonte nesta versão aceita uma URL M3U/M3U8 HTTP/HTTPS; importação de arquivo local e múltiplas fontes ficam para a próxima etapa.
-- A leitura do catálogo já está implementada, mas a reprodução de canais ainda não está conectada à interface.
-- Filmes, séries, temporadas e episódios ainda não têm integração de catálogo.
-- Formatos proprietários ou criptografados (por exemplo, variantes ENC) não são formatos universais: exigem especificação e autorização do fornecedor. O app não contorna DRM, criptografia ou autenticação.
-- O Android pode atrasar tarefas em segundo plano por economia de bateria, Doze ou restrições do fabricante. “A cada 6 horas” é a periodicidade solicitada ao sistema, não uma garantia de execução exata no minuto.
+## Funcionalidades
 
-## Como testar
+- Interface em Kotlin + Jetpack Compose com áreas de TV ao vivo, filmes e séries.
+- Busca por nome e categoria.
+- Capas e sinopses quando fornecidas pela fonte.
+- Carregamento de temporadas e episódios pelo endpoint de detalhes da série.
+- Player Media3 para canais, filmes e episódios, com suporte aos módulos Progressive, HLS, DASH e SmoothStreaming; a reprodução depende dos formatos, codecs e permissões suportados pelo aparelho e pela fonte.
+- Várias playlists M3U/M3U8 e várias contas Xtream cadastradas simultaneamente.
+- Atualização manual e atualização automática solicitada ao Android a cada 6 horas.
+- Atualização manual e automática usam o mesmo fluxo.
+- Quando uma fonte falha, ela não é misturada ao catálogo atualizado. Se outra fonte válida atualizar, o conteúdo antigo da fonte que falhou é removido. Se todas as fontes falharem, o catálogo anterior é preservado para evitar perda por indisponibilidade geral.
+- Banco SQLite local para os catálogos e favoritos de canais.
 
-1. Abra o repositório no Android Studio e sincronize o Gradle.
-2. Execute o app em um dispositivo Android ou emulador.
-3. Cole uma URL de playlist M3U/M3U8 que você tenha autorização para acessar.
-4. Toque em **Salvar fonte** e depois em **Atualizar agora**.
-5. Os canais importados aparecerão na lista. Toque na estrela para marcar ou desmarcar favoritos.
-6. Atualize novamente e confira que os favoritos continuam salvos.
+## Compilação
 
-## Fontes e direitos
+1. Abra o repositório no Android Studio.
+2. Sincronize o Gradle.
+3. Execute a configuração debug ou use o workflow Android build em GitHub Actions.
+4. O APK debug é publicado como artifact tv-e-series-online-debug.
 
-Use somente playlists e transmissões que você tenha autorização para acessar. O projeto não fornece listas piratas nem tenta contornar DRM, autenticação, criptografia ou bloqueios regionais. Metadados de filmes e séries não concedem direitos de transmissão.
+## Testes recomendados no aparelho
 
-## Tecnologias
+1. Cadastre uma playlist M3U/M3U8 autorizada e uma conta Xtream de teste.
+2. Toque em Atualizar todas as fontes.
+3. Confira TV ao vivo, filmes, séries, capas e sinopses.
+4. Abra uma série e confira o carregamento de temporadas e episódios.
+5. Teste a reprodução de um canal, um filme e um episódio.
+6. Teste uma fonte indisponível junto com outra fonte válida e confirme a limpeza do conteúdo da fonte com erro.
+7. Teste a atualização automática após o intervalo solicitado pelo Android.
 
-- Kotlin
-- Jetpack Compose
-- SQLite (armazenamento local)
-- AndroidX WorkManager
-- AndroidX Media3 (dependência adicionada; integração de player pendente)
+O WorkManager solicita a execução a cada 6 horas, mas o Android pode atrasá-la por economia de bateria, Doze ou restrições do fabricante.
+
+## Direitos e privacidade
+
+Use somente fontes, credenciais e transmissões que você tenha autorização para acessar. As credenciais Xtream são necessárias para consultar a API do provedor; não compartilhe o APK com contas de terceiros nem publique credenciais em issues ou logs.
