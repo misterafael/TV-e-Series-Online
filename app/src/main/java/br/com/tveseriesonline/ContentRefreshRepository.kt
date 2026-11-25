@@ -12,14 +12,21 @@ object ContentRefreshRepository {
         val errors = mutableListOf<String>()
         val hasM3u = MultiSourceRepository.getSources(context).isNotEmpty()
         val hasXtream = VodRepository.accounts(context).isNotEmpty()
-        require(hasM3u || hasXtream) { "Cadastre ao menos uma fonte M3U/M3U8 ou conta Xtream Codes." }
 
         var m3uCount = 0
-        var movies = 0
-        var series = 0
         var xtreamLive = 0
         var m3uSuccess = false
         var xtreamSuccess = false
+        var publicSuccess = false
+
+        // O catálogo público de vídeo é independente de M3U e de conta Xtream.
+        try {
+            val publicResult = PublicVodDiscovery.refresh(context)
+            publicSuccess = publicResult.items > 0
+            errors += publicResult.errors
+        } catch (e: Exception) {
+            errors += "Catálogo público de filmes/séries/animes: ${e.message ?: "falha na busca"}"
+        }
 
         if (hasM3u) {
             try {
@@ -32,21 +39,26 @@ object ContentRefreshRepository {
         if (hasXtream) {
             try {
                 val result = VodRepository.refreshAll(context)
-                movies = result.movies
-                series = result.series
                 xtreamLive = result.liveChannels
                 errors += result.errors
                 xtreamSuccess = true
             } catch (e: Exception) { errors += "Xtream: ${e.message ?: "falha"}" }
         }
 
-        // A successful source family replaces stale content from the family that failed or was removed.
+        // Uma falha em Xtream não apaga os vídeos públicos já encontrados.
         if (xtreamSuccess && !m3uSuccess) ChannelDatabase(context).use { it.clearCatalog() }
         if (m3uSuccess && !xtreamSuccess) VodRepository.clearCatalog(context)
 
-        require(m3uSuccess || xtreamSuccess) {
-            errors.firstOrNull() ?: "Nenhuma fonte respondeu com conteúdo válido; o catálogo anterior foi preservado."
+        val allMovies = VodRepository.movies(context)
+        val allSeries = VodRepository.series(context)
+        val publicCatalogExists = allMovies.any { it.id.startsWith("ia|") }
+        require(m3uSuccess || xtreamSuccess || publicSuccess || publicCatalogExists) {
+            errors.firstOrNull()
+                ?: "Nenhuma fonte pública autorizada respondeu. O catálogo anterior foi preservado."
         }
-        return FullRefreshSummary(m3uCount,movies,series,xtreamLive,errors)
+
+        val movieCount = allMovies.count { !it.category.startsWith("Séries") && !it.category.startsWith("Animes") }
+        val seriesCount = allSeries.size
+        return FullRefreshSummary(m3uCount, movieCount, seriesCount, xtreamLive, errors)
     }
 }
