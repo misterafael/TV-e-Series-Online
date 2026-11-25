@@ -124,7 +124,7 @@ object VodRepository {
     }
 
     fun movies(context: Context) = VodStore(context).use { it.movies() }
-    fun series(context: Context) = VodStore(context).use { it.series() }
+    fun series(context: Context) = VodStore(context).use { it.series() + it.publicSeries() }
     fun liveChannels(context: Context) = VodStore(context).use { it.live() }
     fun clearCatalog(context: Context) = VodStore(context).use { it.clearAll() }
 
@@ -170,8 +170,19 @@ private class VodStore(context: Context): SQLiteOpenHelper(context,"tv_series_vo
     override fun onUpgrade(db:SQLiteDatabase,oldVersion:Int,newVersion:Int)=Unit
     fun replaceMovies(items:List<VodMovie>) {
         val db=writableDatabase; db.beginTransaction()
-        try { db.delete("movies",null,null); items.distinctBy{it.id}.forEach { db.execSQL("INSERT OR REPLACE INTO movies VALUES(?,?,?,?,?,?,?)",arrayOf(it.id,it.name,it.poster,it.plot,it.category,it.streamUrl,it.extension)) }; db.setTransactionSuccessful() }
+        try { db.delete("movies", "id NOT LIKE 'ia|%'", null); items.distinctBy{it.id}.forEach { db.execSQL("INSERT OR REPLACE INTO movies VALUES(?,?,?,?,?,?,?)",arrayOf(it.id,it.name,it.poster,it.plot,it.category,it.streamUrl,it.extension)) }; db.setTransactionSuccessful() }
         finally { db.endTransaction() }
+    }
+    fun replacePublicMovies(items:List<VodMovie>) {
+        val db=writableDatabase; db.beginTransaction()
+        try {
+            db.delete("movies", "id LIKE 'ia|%'", null)
+            items.distinctBy{it.id}.forEach {
+                db.execSQL("INSERT OR REPLACE INTO movies VALUES(?,?,?,?,?,?,?)",
+                    arrayOf(it.id,it.name,it.poster,it.plot,it.category,it.streamUrl,it.extension))
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
     fun replaceSeries(items:List<VodSeries>) {
         val db=writableDatabase; db.beginTransaction()
@@ -183,7 +194,7 @@ private class VodStore(context: Context): SQLiteOpenHelper(context,"tv_series_vo
         try { db.delete("xtream_live",null,null); items.distinctBy{it.streamUrl}.forEach { db.execSQL("INSERT OR REPLACE INTO xtream_live VALUES(?,?,?,?,?)",arrayOf(it.streamUrl,it.name,it.groupName,it.logoUrl,it.tvgId)) }; db.setTransactionSuccessful() }
         finally { db.endTransaction() }
     }
-    fun clearAll() { writableDatabase.beginTransaction(); try { writableDatabase.delete("movies",null,null); writableDatabase.delete("series",null,null); writableDatabase.delete("xtream_live",null,null); writableDatabase.setTransactionSuccessful() } finally { writableDatabase.endTransaction() } }
+    fun clearAll() { writableDatabase.beginTransaction(); try { writableDatabase.delete("movies", "id NOT LIKE 'ia|%'", null); writableDatabase.delete("series",null,null); writableDatabase.delete("xtream_live",null,null); writableDatabase.setTransactionSuccessful() } finally { writableDatabase.endTransaction() } }
     fun removeAccount(account: XtreamAccount) {
         val db=writableDatabase
         val contentPrefix=account.id+"|"
@@ -201,6 +212,13 @@ private class VodStore(context: Context): SQLiteOpenHelper(context,"tv_series_vo
         val out=mutableListOf<VodSeries>(); readableDatabase.rawQuery("SELECT * FROM series ORDER BY name COLLATE NOCASE",null).use { c ->
             while(c.moveToNext()) out += VodSeries(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),c.getString(5))
         }; return out
+    }
+    fun publicSeries():List<VodSeries> {
+        val out=mutableListOf<VodSeries>()
+        readableDatabase.rawQuery("SELECT id,name,poster,plot,category FROM movies WHERE id LIKE 'ia|%' AND (category LIKE 'Séries%' OR category LIKE 'Animes%') ORDER BY name COLLATE NOCASE",null).use { c ->
+            while(c.moveToNext()) out += VodSeries(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),null)
+        }
+        return out
     }
     fun live():List<Channel> {
         val out=mutableListOf<Channel>(); readableDatabase.rawQuery("SELECT * FROM xtream_live ORDER BY name COLLATE NOCASE",null).use { c ->
