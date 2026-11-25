@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,12 +42,7 @@ object AppUpdateChecker {
 
             withContext(Dispatchers.Main) {
                 if (activity.isFinishing || activity.isDestroyed) return@withContext
-                AlertDialog.Builder(activity)
-                    .setTitle("Atualização disponível")
-                    .setMessage("A versão ${release.version} está disponível. Deseja baixar a atualização agora?")
-                    .setPositiveButton("Baixar atualização") { _, _ -> download(activity, release) }
-                    .setNegativeButton("Mais tarde", null)
-                    .show()
+                download(activity, release)
             }
         }
     }
@@ -146,7 +140,7 @@ object AppUpdateChecker {
     class DownloadReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == DownloadManager.ACTION_DOWNLOAD_COMPLETE) {
-                onDownloadCompleted(context, intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L))
+                AppUpdateChecker.onDownloadCompleted(context, intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L))
             }
         }
     }
