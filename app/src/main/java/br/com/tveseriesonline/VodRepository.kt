@@ -81,10 +81,16 @@ object VodRepository {
                         o.optString("cover").ifBlank { null },o.optString("plot").ifBlank { null },
                         seriesCats[o.optString("category_id")] ?: "Sem categoria",o.optString("year").ifBlank { null })
                 }
-            } catch (e: Exception) { errors += "Conta ${index+1}: ${e.message ?: "falha na importação"}" }
+                live += accountLive
+                movies += accountMovies
+                series += accountSeries
+                successfulAccounts++
+            } catch (e: Exception) {
+                errors += "Conta ${index+1}: ${e.message ?: "falha na importação"}"
+            }
         }
-        require(movies.isNotEmpty() || series.isNotEmpty() || live.isNotEmpty()) {
-            errors.firstOrNull() ?: "Nenhuma conta retornou conteúdo válido."
+        require(successfulAccounts > 0) {
+            errors.firstOrNull() ?: "Nenhuma conta Xtream retornou um catálogo válido."
         }
         VodStore(context).use { db ->
             db.replaceMovies(movies)
