@@ -43,6 +43,7 @@ object VodRepository {
             a.put(JSONObject().put("server",it.server).put("username",it.username).put("password",it.password))
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY,a.toString()).apply()
+        VodStore(context).use { it.removeAccount(account) }
     }
 
     suspend fun refreshAll(context: Context): VodRefreshSummary {
@@ -183,6 +184,14 @@ private class VodStore(context: Context): SQLiteOpenHelper(context,"tv_series_vo
         finally { db.endTransaction() }
     }
     fun clearAll() { writableDatabase.beginTransaction(); try { writableDatabase.delete("movies",null,null); writableDatabase.delete("series",null,null); writableDatabase.delete("xtream_live",null,null); writableDatabase.setTransactionSuccessful() } finally { writableDatabase.endTransaction() } }
+    fun removeAccount(account: XtreamAccount) {
+        val db=writableDatabase
+        val contentPrefix=account.id+"|"
+        db.delete("movies","substr(id,1,?)=?",arrayOf(contentPrefix.length.toString(),contentPrefix))
+        db.delete("series","substr(id,1,?)=?",arrayOf(contentPrefix.length.toString(),contentPrefix))
+        val livePrefix=account.server+"/live/"+enc(account.username)+"/"
+        db.delete("xtream_live","substr(url,1,?)=?",arrayOf(livePrefix.length.toString(),livePrefix))
+    }
     fun movies():List<VodMovie> {
         val out=mutableListOf<VodMovie>(); readableDatabase.rawQuery("SELECT * FROM movies ORDER BY name COLLATE NOCASE",null).use { c ->
             while(c.moveToNext()) out += VodMovie(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),c.getString(5),c.getString(6))
