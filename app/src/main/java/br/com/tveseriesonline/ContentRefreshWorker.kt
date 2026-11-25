@@ -5,8 +5,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 
 /**
- * Single refresh pipeline shared by scheduled and manual refresh requests.
- * Source discovery, validation and persistence will be implemented in the data layer.
+ * Periodic refresh and manual refresh share PlaylistRepository.refreshConfiguredSource().
+ * A failed download or invalid playlist never replaces the last known-good catalog.
  */
 class ContentRefreshWorker(
     appContext: Context,
@@ -14,8 +14,19 @@ class ContentRefreshWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        // Safe starter behavior: do not overwrite the user's data until a valid
-        // authorized source has been fetched, parsed and validated.
-        return Result.success()
+        return try {
+            val count = PlaylistRepository.refreshConfiguredSource(applicationContext)
+            Result.success(
+                androidx.work.workDataOf("imported_count" to count)
+            )
+        } catch (error: IllegalArgumentException) {
+            // Missing source or invalid playlist: retrying will not fix user input.
+            Result.failure(
+                androidx.work.workDataOf("error" to (error.message ?: "Fonte inválida"))
+            )
+        } catch (error: Exception) {
+            // Network and temporary server failures can recover on a later attempt.
+            Result.retry()
+        }
     }
 }
