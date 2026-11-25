@@ -81,7 +81,7 @@ object PublicVodDiscovery {
 
         val fileName = playable.optString("name")
         val title = metadata.optString("title").ifBlank { identifier }
-        val description = metadata.optString("description").take(1200).ifBlank { null }
+        val description = metadata.optString("description").take(1200).takeIf { it.isNotBlank() }
         val year = metadata.optString("year")
         val categoryLabel = if (year.isBlank()) category else "$category • $year"
         val streamUrl = "$BASE/download/${enc(identifier)}/${Uri.encode(fileName)}"
