@@ -32,6 +32,7 @@ object AppUpdateChecker {
     fun checkOnLaunch(activity: Activity) {
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
+        if (prefs.getLong(KEY_DOWNLOAD_ID, -1L) > 0L || prefs.getString(KEY_PENDING_URI, null) != null) return
         if (now - prefs.getLong(KEY_LAST_CHECK, 0L) < CHECK_INTERVAL_MS) return
         prefs.edit().putLong(KEY_LAST_CHECK, now).apply()
 
@@ -93,7 +94,20 @@ object AppUpdateChecker {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getLong(KEY_DOWNLOAD_ID, -1L) != completedId) return
         val manager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val uri = manager.getUriForDownloadedFile(completedId) ?: return
+        val cursor = manager.query(DownloadManager.Query().setFilterById(completedId))
+        val status = cursor.use {
+            if (it != null && it.moveToFirst()) it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+            else DownloadManager.STATUS_FAILED
+        }
+        if (status != DownloadManager.STATUS_SUCCESSFUL) {
+            prefs.edit().remove(KEY_DOWNLOAD_ID).apply()
+            Toast.makeText(context, "O download da atualização falhou. Tentaremos novamente na próxima verificação.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val uri = manager.getUriForDownloadedFile(completedId) ?: run {
+            prefs.edit().remove(KEY_DOWNLOAD_ID).apply()
+            return
+        }
         prefs.edit().putString(KEY_PENDING_URI, uri.toString()).remove(KEY_DOWNLOAD_ID).apply()
         Toast.makeText(context, "Atualização baixada. Abra o app para concluir a instalação.", Toast.LENGTH_LONG).show()
     }
