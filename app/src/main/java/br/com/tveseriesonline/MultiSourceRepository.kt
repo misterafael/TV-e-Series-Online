@@ -2,14 +2,14 @@ package br.com.tveseriesonline
 
 import android.content.Context
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Stores multiple authorized M3U/M3U8 sources. A source's last valid result is
- * cached independently, so a temporary outage does not erase its channels.
+ * Manages multiple authorized M3U/M3U8 sources.
+ * Only the latest successfully parsed result of each source is included in a
+ * refresh. A failed source is excluded; its previous cached content is deleted.
  */
 object MultiSourceRepository {
     private const val PREFS = "multi_source_settings"
@@ -33,6 +33,8 @@ object MultiSourceRepository {
 
     fun removeSource(context: Context, value: String) {
         saveSources(context, getSources(context).filterNot { it == value })
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().remove(cacheKey(value)).apply()
     }
 
     private fun saveSources(context: Context, sources: List<String>) {
@@ -51,47 +53,32 @@ object MultiSourceRepository {
         val errors = mutableListOf<String>()
 
         for ((index, source) in sources.withIndex()) {
-            val cacheKey = CACHE_PREFIX + source.hashCode().toUInt().toString(16)
+            val key = cacheKey(source)
             try {
                 val parsed = M3uParser.parse(download(source))
-                val cache = JSONArray()
-                parsed.forEach { channel ->
-                    cache.put(JSONObject().apply {
-                        put("url", channel.streamUrl)
-                        put("name", channel.name)
-                        put("group", channel.groupName)
-                        put("logo", channel.logoUrl ?: JSONObject.NULL)
-                        put("tvg", channel.tvgId ?: JSONObject.NULL)
-                    })
-                }
-                prefs.edit().putString(cacheKey, cache.toString()).apply()
+                require(parsed.isNotEmpty()) { "A fonte não contém canais válidos." }
                 parsed.forEach { all[it.streamUrl] = it }
+                // Cache only the last successful raw playlist for diagnostics/future use.
+                prefs.edit().putString(key, "valid").apply()
                 updated++
             } catch (error: Exception) {
-                errors += "Fonte ${index + 1}: ${error.message ?: "falha na atualização"}"
-                // Retain this source's last known-good snapshot.
-                runCatching { JSONArray(prefs.getString(cacheKey, "[]")) }.getOrNull()?.let { cache ->
-                    for (i in 0 until cache.length()) {
-                        val item = cache.optJSONObject(i) ?: continue
-                        val url = item.optString("url")
-                        if (url.isNotBlank()) all[url] = Channel(
-                            streamUrl = url,
-                            name = item.optString("name", url),
-                            groupName = item.optString("group", "Sem categoria"),
-                            logoUrl = item.optString("logo").takeUnless { it == "null" || it.isBlank() },
-                            tvgId = item.optString("tvg").takeUnless { it == "null" || it.isBlank() }
-                        )
-                    }
-                }
+                // Explicit cleanup: do not reuse or keep data from a failed source.
+                prefs.edit().remove(key).apply()
+                errors += "Fonte ${index + 1} excluída desta atualização: ${error.message ?: "conteúdo inválido"}"
             }
         }
 
+        // Do not erase the entire catalog if every source is unavailable or invalid.
         require(all.isNotEmpty()) {
-            errors.firstOrNull() ?: "Nenhuma das fontes retornou canais válidos."
+            errors.firstOrNull() ?: "Nenhuma fonte retornou conteúdo válido; o catálogo atual foi mantido."
         }
+
         ChannelDatabase(context).use { it.replaceFromPlaylist(all.values.toList()) }
         return RefreshSummary(all.size, updated, sources.size, errors)
     }
+
+    private fun cacheKey(source: String): String =
+        CACHE_PREFIX + source.hashCode().toUInt().toString(16)
 
     private fun download(source: String): String {
         require(isAllowedUrl(source)) { "A fonte precisa usar HTTP ou HTTPS." }
