@@ -99,6 +99,7 @@ private fun HomeScreen() {
             if (MultiSourceRepository.getSources(context).isEmpty() && oldSource.isNotBlank()) {
                 MultiSourceRepository.addSource(context, oldSource)
             }
+            PublicSourceDiscovery.discoverAndRegister(context)
         }
         reloadCatalog()
     }
@@ -107,12 +108,17 @@ private fun HomeScreen() {
         scope.launch {
             busy = true
             status = "Atualizando fontes M3U/M3U8 e Xtream..."
+            val discovery = runCatching { withContext(Dispatchers.IO) { PublicSourceDiscovery.discoverAndRegister(context) } }.getOrNull()
             val result = runCatching { withContext(Dispatchers.IO) { ContentRefreshRepository.refreshAll(context) } }
             result.onSuccess { summary ->
                 reloadCatalog()
-                status = "Atualização concluída: ${summary.m3uChannels + summary.xtreamChannels} canais, ${summary.vodMovies} filmes e ${summary.vodSeries} séries."
-                if (summary.errors.isNotEmpty()) status += " Fontes com erro foram excluídas desta atualização."
-            }.onFailure { status = it.message ?: "Falha na atualização. O catálogo anterior foi preservado quando nenhuma fonte respondeu." }
+                val found = discovery?.let { " Busca automática: " + it.added + " novas listas adicionadas de " + it.checked + " verificadas." }.orEmpty()
+                status = "Atualização concluída: " + (summary.m3uChannels + summary.xtreamChannels) + " canais, " + summary.vodMovies + " filmes e " + summary.vodSeries + " séries." + found
+                if (summary.errors.isNotEmpty() || discovery?.errors?.isNotEmpty() == true) status += " Algumas fontes indisponíveis foram ignoradas."
+            }.onFailure { error ->
+                status = (discovery?.let { "Busca automática: " + it.added + " listas adicionadas. " } ?: "") +
+                    (error.message ?: "Falha na atualização. O catálogo anterior foi preservado quando nenhuma fonte respondeu.")
+            }
             busy = false
         }
     }
@@ -172,9 +178,12 @@ private fun HomeScreen() {
                             }
                         }
                     }
-                    Button(enabled = !busy && (sources.isNotEmpty() || accounts.isNotEmpty()), onClick = { refresh() },
+                    Button(enabled = !busy, onClick = { refresh() },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF315A45))) {
-                        Text(if (busy) "Atualizando..." else "Atualizar todas as fontes")
+                        Text(if (busy) "Procurando e atualizando..." else "Procurar e adicionar listas automaticamente")
+                    }
+                    Button(enabled = !busy && (sources.isNotEmpty() || accounts.isNotEmpty()), onClick = { refresh() }) {
+                        Text("Atualizar fontes cadastradas")
                     }
                     Text(status, color = Color(0xFFADB6C8), fontSize = 12.sp)
 
