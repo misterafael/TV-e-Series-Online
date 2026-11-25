@@ -176,6 +176,16 @@ private fun HomeScreen() {
     }
 
     fun openSeries(item: VodSeries) {
+        if (item.id.startsWith("ia|")) {
+            val publicVideo = movies.firstOrNull { it.id == item.id }
+            if (publicVideo != null) {
+                selectedMedia = publicVideo.name to publicVideo.streamUrl
+                status = "Abrindo vídeo público do Internet Archive. A página da fonte informa a licença declarada."
+            } else {
+                status = "Este vídeo público não está mais no catálogo. Atualize as fontes."
+            }
+            return
+        }
         selectedSeries = item
         episodes = emptyList()
         scope.launch {
@@ -206,6 +216,7 @@ private fun HomeScreen() {
                 MultiSourceRepository.addSource(context, oldSource)
             }
             PublicSourceDiscovery.discoverAndRegister(context)
+            PublicVodDiscovery.refresh(context)
         }
         loadCatalog()
         if (channels.isEmpty() && movies.isEmpty() && series.isEmpty()) refreshCatalog()
@@ -431,7 +442,10 @@ private fun MovieShelf(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SectionTitle("Filmes", "Procure pelo título do filme")
         SearchBox(query, onQuery, "Exemplo: Vingadores...")
-        val filtered = movies.filter { it.name.contains(query, true) || it.category.contains(query, true) }
+        val filtered = movies.filter {
+            !it.category.startsWith("Séries") && !it.category.startsWith("Animes") &&
+                (it.name.contains(query, true) || it.category.contains(query, true))
+        }
         if (filtered.isEmpty()) Text("Nenhum filme disponível nas fontes públicas compatíveis no momento.", color = MutedText)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(filtered, key = { it.id }) { movie ->
