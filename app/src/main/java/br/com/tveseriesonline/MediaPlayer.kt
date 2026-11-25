@@ -56,7 +56,7 @@ private fun MediaUrlPlayer(title: String, streamUrl: String) {
         Text(title, color = Color.White)
         AndroidView(
             modifier = Modifier.fillMaxWidth().height(220.dp),
-            factory = { PlayerView(it).apply { player = player; useController = true } },
+            factory = { PlayerView(it).apply { this.player = player; useController = true } },
             update = { it.player = player }
         )
         Text(playbackMessage, color = Color(0xFFADB6C8))
