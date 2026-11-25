@@ -76,6 +76,7 @@ private fun HomeScreen() {
     var selectedSeries by remember { mutableStateOf<VodSeries?>(null) }
     var selectedUrl by remember { mutableStateOf<Pair<String,String>?>(null) }
     var tab by rememberSaveable { mutableStateOf(CatalogTab.LIVE.name) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     var status by remember { mutableStateOf("Adicione fontes M3U/M3U8 ou contas Xtream autorizadas.") }
     var busy by remember { mutableStateOf(false) }
 
@@ -184,6 +185,9 @@ private fun HomeScreen() {
                             }
                         }
                     }
+                    OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(), label = { Text("Buscar no catálogo") }, singleLine = true)
+
                     selectedUrl?.let { selected ->
                         VodPlayer(selected.first,selected.second)
                         Button(onClick = { selectedUrl = null }) { Text("Fechar reprodução") }
@@ -194,7 +198,7 @@ private fun HomeScreen() {
             when (CatalogTab.valueOf(tab)) {
                 CatalogTab.LIVE -> {
                     if (channels.isEmpty()) item { Text("Nenhum canal importado.", color = Color(0xFF8792A6)) }
-                    items(channels.distinctBy { it.streamUrl }, key = { it.streamUrl }) { channel ->
+                    items(channels.filter { it.name.contains(searchQuery, true) || it.groupName.contains(searchQuery, true) }.distinctBy { it.streamUrl }, key = { it.streamUrl }) { channel ->
                         ChannelRow(channel, onPlay = { selectedUrl = channel.name to channel.streamUrl }, onFavorite = {
                             scope.launch {
                                 withContext(Dispatchers.IO) { PlaylistRepository.setFavorite(context,channel.streamUrl,!channel.isFavorite) }
@@ -205,7 +209,7 @@ private fun HomeScreen() {
                 }
                 CatalogTab.MOVIES -> {
                     if (movies.isEmpty()) item { Text("Nenhum filme encontrado. Cadastre uma fonte Xtream e atualize.", color = Color(0xFF8792A6)) }
-                    items(movies, key = { it.id }) { movie ->
+                    items(movies.filter { it.name.contains(searchQuery, true) || it.category.contains(searchQuery, true) }, key = { it.id }) { movie ->
                         CatalogRow(movie.name,movie.category,movie.plot,movie.poster) {
                             selectedUrl = movie.name to movie.streamUrl
                         }
@@ -214,7 +218,7 @@ private fun HomeScreen() {
                 CatalogTab.SERIES -> {
                     if (selectedSeries == null) {
                         if (series.isEmpty()) item { Text("Nenhuma série encontrada. Cadastre uma fonte Xtream e atualize.", color = Color(0xFF8792A6)) }
-                        items(series, key = { it.id }) { item ->
+                        items(series.filter { it.name.contains(searchQuery, true) || it.category.contains(searchQuery, true) }, key = { it.id }) { item ->
                             CatalogRow(item.name,item.category,item.plot,item.poster) {
                                 selectedSeries = item
                                 episodes = emptyList()
@@ -243,7 +247,7 @@ private fun HomeScreen() {
                             Text("Temporadas e episódios",color=Color(0xFFADB6C8))
                         }
                         if (episodes.isEmpty()) item { Text("Carregando episódios ou nenhum episódio disponível.",color=Color(0xFF8792A6)) }
-                        items(episodes,key={it.id}) { episode ->
+                        items(episodes.filter { it.title.contains(searchQuery, true) || it.season.toString().contains(searchQuery) },key={it.id}) { episode ->
                             CatalogRow("T${episode.season} • E${episode.episode} — ${episode.title}","Temporada ${episode.season}",null,null) {
                                 selectedUrl = episode.title to episode.streamUrl
                             }
