@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -23,20 +22,26 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 
 @Composable
-fun ChannelPlayer(channel: Channel) {
+fun ChannelPlayer(channel: Channel) = MediaUrlPlayer(channel.name, channel.streamUrl)
+
+@Composable
+fun VodPlayer(title: String, streamUrl: String) = MediaUrlPlayer(title, streamUrl)
+
+@Composable
+private fun MediaUrlPlayer(title: String, streamUrl: String) {
     val context = LocalContext.current
-    var playbackMessage by remember(channel.streamUrl) { mutableStateOf("Conectando à transmissão...") }
-    val player = remember(channel.streamUrl) {
+    var playbackMessage by remember(streamUrl) { mutableStateOf("Conectando...") }
+    val player = remember(streamUrl) {
         ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(channel.streamUrl))
+            setMediaItem(MediaItem.fromUri(streamUrl))
             playWhenReady = true
             prepare()
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     playbackMessage = when (playbackState) {
-                        Player.STATE_BUFFERING -> "Carregando transmissão..."
+                        Player.STATE_BUFFERING -> "Carregando..."
                         Player.STATE_READY -> "Reproduzindo"
-                        Player.STATE_ENDED -> "Transmissão encerrada"
+                        Player.STATE_ENDED -> "Reprodução encerrada"
                         else -> playbackMessage
                     }
                 }
@@ -46,20 +51,12 @@ fun ChannelPlayer(channel: Channel) {
             })
         }
     }
-
-    DisposableEffect(player) {
-        onDispose { player.release() }
-    }
-
+    DisposableEffect(player) { onDispose { player.release() } }
     Column(modifier = Modifier.fillMaxWidth()) {
+        Text(title, color = Color.White)
         AndroidView(
             modifier = Modifier.fillMaxWidth().height(220.dp),
-            factory = { viewContext ->
-                PlayerView(viewContext).apply {
-                    this.player = player
-                    useController = true
-                }
-            },
+            factory = { PlayerView(it).apply { player = player; useController = true } },
             update = { it.player = player }
         )
         Text(playbackMessage, color = Color(0xFFADB6C8))
