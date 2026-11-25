@@ -52,19 +52,23 @@ object VodRepository {
         val series = mutableListOf<VodSeries>()
         val live = mutableListOf<Channel>()
         val errors = mutableListOf<String>()
+        var successfulAccounts = 0
         accounts.forEachIndexed { index, account ->
             try {
+                val accountLive = mutableListOf<Channel>()
+                val accountMovies = mutableListOf<VodMovie>()
+                val accountSeries = mutableListOf<VodSeries>()
                 val liveCats = categories(account, "get_live_categories")
                 apiArray(account,"get_live_streams").forEach { o ->
                     val id=o.optString("stream_id")
-                    if(id.isNotBlank()) live += Channel(streamUrl(account,"live",id,null),o.optString("name"),
+                    if(id.isNotBlank()) accountLive += Channel(streamUrl(account,"live",id,null),o.optString("name"),
                         liveCats[o.optString("category_id")] ?: "Ao vivo",o.optString("stream_icon").ifBlank { null },
                         o.optString("epg_channel_id").ifBlank { null })
                 }
                 val movieCats = categories(account,"get_vod_categories")
                 apiArray(account,"get_vod_streams").forEach { o ->
                     val id=o.optString("stream_id")
-                    if(id.isNotBlank()) movies += VodMovie(account.id+"|movie|"+id,o.optString("name"),
+                    if(id.isNotBlank()) accountMovies += VodMovie(account.id+"|movie|"+id,o.optString("name"),
                         o.optString("stream_icon").ifBlank { null },o.optString("plot").ifBlank { null },
                         movieCats[o.optString("category_id")] ?: "Sem categoria",
                         streamUrl(account,"movie",id,o.optString("container_extension").ifBlank { null }),
@@ -73,7 +77,7 @@ object VodRepository {
                 val seriesCats = categories(account,"get_series_categories")
                 apiArray(account,"get_series").forEach { o ->
                     val id=o.optString("series_id")
-                    if(id.isNotBlank()) series += VodSeries(account.id+"|series|"+id,o.optString("name"),
+                    if(id.isNotBlank()) accountSeries += VodSeries(account.id+"|series|"+id,o.optString("name"),
                         o.optString("cover").ifBlank { null },o.optString("plot").ifBlank { null },
                         seriesCats[o.optString("category_id")] ?: "Sem categoria",o.optString("year").ifBlank { null })
                 }
@@ -83,9 +87,9 @@ object VodRepository {
             errors.firstOrNull() ?: "Nenhuma conta retornou conteúdo válido."
         }
         VodStore(context).use { db ->
-            if (movies.isNotEmpty()) db.replaceMovies(movies)
-            if (series.isNotEmpty()) db.replaceSeries(series)
-            if (live.isNotEmpty()) db.replaceLive(live)
+            db.replaceMovies(movies)
+            db.replaceSeries(series)
+            db.replaceLive(live)
         }
         return VodRefreshSummary(movies.size,series.size,live.size,errors)
     }
@@ -115,6 +119,7 @@ object VodRepository {
     fun movies(context: Context) = VodStore(context).use { it.movies() }
     fun series(context: Context) = VodStore(context).use { it.series() }
     fun liveChannels(context: Context) = VodStore(context).use { it.live() }
+    fun clearCatalog(context: Context) = VodStore(context).use { it.clearAll() }
 
     private fun categories(account: XtreamAccount, action: String): Map<String,String> =
         apiArray(account,action).associate { it.optString("category_id") to it.optString("category_name") }
@@ -171,6 +176,7 @@ private class VodStore(context: Context): SQLiteOpenHelper(context,"tv_series_vo
         try { db.delete("xtream_live",null,null); items.distinctBy{it.streamUrl}.forEach { db.execSQL("INSERT OR REPLACE INTO xtream_live VALUES(?,?,?,?,?)",arrayOf(it.streamUrl,it.name,it.groupName,it.logoUrl,it.tvgId)) }; db.setTransactionSuccessful() }
         finally { db.endTransaction() }
     }
+    fun clearAll() { writableDatabase.beginTransaction(); try { writableDatabase.delete("movies",null,null); writableDatabase.delete("series",null,null); writableDatabase.delete("xtream_live",null,null); writableDatabase.setTransactionSuccessful() } finally { writableDatabase.endTransaction() } }
     fun movies():List<VodMovie> {
         val out=mutableListOf<VodMovie>(); readableDatabase.rawQuery("SELECT * FROM movies ORDER BY name COLLATE NOCASE",null).use { c ->
             while(c.moveToNext()) out += VodMovie(c.getString(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),c.getString(5),c.getString(6))
