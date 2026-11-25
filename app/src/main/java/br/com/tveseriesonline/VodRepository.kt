@@ -161,7 +161,7 @@ object VodRepository {
     private fun enc(s:String)=URLEncoder.encode(s,"UTF-8")
 }
 
-private class VodStore(context: Context): SQLiteOpenHelper(context,"tv_series_vod.db",null,1) {
+internal class VodStore(context: Context): SQLiteOpenHelper(context,"tv_series_vod.db",null,1) {
     override fun onCreate(db:SQLiteDatabase) {
         db.execSQL("CREATE TABLE movies(id TEXT PRIMARY KEY,name TEXT,poster TEXT,plot TEXT,category TEXT,stream_url TEXT,extension TEXT)")
         db.execSQL("CREATE TABLE series(id TEXT PRIMARY KEY,name TEXT,poster TEXT,plot TEXT,category TEXT,year TEXT)")
