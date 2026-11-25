@@ -219,7 +219,7 @@ private fun HomeScreen() {
             val wideLayout = maxWidth >= 700.dp
             val sidePadding = if (wideLayout) 28.dp else 16.dp
             LazyColumn(
-                modifier = Modifier.fillMaxSize().widthIn(max = 1200.dp)
+                modifier = Modifier.widthIn(max = 1200.dp).fillMaxSize().align(Alignment.TopCenter)
                     .padding(horizontal = sidePadding, vertical = if (wideLayout) 24.dp else 16.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
