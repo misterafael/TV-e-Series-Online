@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -203,7 +206,7 @@ private fun HomeScreen() {
                 CatalogTab.MOVIES -> {
                     if (movies.isEmpty()) item { Text("Nenhum filme encontrado. Cadastre uma fonte Xtream e atualize.", color = Color(0xFF8792A6)) }
                     items(movies, key = { it.id }) { movie ->
-                        CatalogRow(movie.name,movie.category,movie.plot) {
+                        CatalogRow(movie.name,movie.category,movie.plot,movie.poster) {
                             selectedUrl = movie.name to movie.streamUrl
                         }
                     }
@@ -212,7 +215,7 @@ private fun HomeScreen() {
                     if (selectedSeries == null) {
                         if (series.isEmpty()) item { Text("Nenhuma série encontrada. Cadastre uma fonte Xtream e atualize.", color = Color(0xFF8792A6)) }
                         items(series, key = { it.id }) { item ->
-                            CatalogRow(item.name,item.category,item.plot) {
+                            CatalogRow(item.name,item.category,item.plot,item.poster) {
                                 selectedSeries = item
                                 episodes = emptyList()
                                 scope.launch {
@@ -241,7 +244,7 @@ private fun HomeScreen() {
                         }
                         if (episodes.isEmpty()) item { Text("Carregando episódios ou nenhum episódio disponível.",color=Color(0xFF8792A6)) }
                         items(episodes,key={it.id}) { episode ->
-                            CatalogRow("T${episode.season} • E${episode.episode} — ${episode.title}","Temporada ${episode.season}",null) {
+                            CatalogRow("T${episode.season} • E${episode.episode} — ${episode.title}","Temporada ${episode.season}",null,null) {
                                 selectedUrl = episode.title to episode.streamUrl
                             }
                         }
@@ -258,13 +261,19 @@ private fun HomeScreen() {
 }
 
 @Composable
-private fun CatalogRow(title:String,category:String,description:String?,onClick:()->Unit) {
+private fun CatalogRow(title:String,category:String,description:String?,posterUrl:String?,onClick:()->Unit) {
     Surface(modifier=Modifier.fillMaxWidth().clickable(onClick=onClick),color=Color(0xFF171B27),shape=RoundedCornerShape(12.dp)) {
-        Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-            Text(title,color=Color.White,fontWeight=FontWeight.Medium)
-            Text(category,color=Color(0xFF8DB0FF),fontSize=11.sp)
-            if(!description.isNullOrBlank()) Text(description,color=Color(0xFFADB6C8),fontSize=11.sp,maxLines=3)
-            Text("Abrir",color=Color(0xFF6E9BFF),fontSize=10.sp)
+        Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+            if (!posterUrl.isNullOrBlank()) {
+                AsyncImage(model=posterUrl,contentDescription="Capa de $title",
+                    modifier=Modifier.width(76.dp).height(108.dp),contentScale=ContentScale.Crop)
+            }
+            Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                Text(title,color=Color.White,fontWeight=FontWeight.Medium)
+                Text(category,color=Color(0xFF8DB0FF),fontSize=11.sp)
+                if(!description.isNullOrBlank()) Text(description,color=Color(0xFFADB6C8),fontSize=11.sp,maxLines=3)
+                Text("Abrir",color=Color(0xFF6E9BFF),fontSize=10.sp)
+            }
         }
     }
 }
