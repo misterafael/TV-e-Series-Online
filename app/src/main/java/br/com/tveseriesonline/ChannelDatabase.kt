@@ -23,6 +23,11 @@ class ChannelDatabase(context: Context) :
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
 
+    /**
+     * Replaces the catalog with the latest validated snapshot.
+     * Favorite flags survive for channels that are still present; stale or
+     * invalid entries (including missing favorites) are removed.
+     */
     fun replaceFromPlaylist(imported: List<Channel>) {
         val db = writableDatabase
         db.beginTransaction()
@@ -35,11 +40,10 @@ class ChannelDatabase(context: Context) :
                 while (cursor.moveToNext()) favoriteUrls += cursor.getString(0)
             }
 
-            // Remove stale non-favorites only. Favorites remain saved even if a
-            // source temporarily omits them from its playlist.
-            db.delete("channels", "is_favorite = 0", null)
+            // Delete every old row; only validated entries are inserted again.
+            db.delete("channels", null, null)
 
-            imported.forEach { channel ->
+            imported.distinctBy { it.streamUrl }.forEach { channel ->
                 val values = ContentValues().apply {
                     put("stream_url", channel.streamUrl)
                     put("name", channel.name)
@@ -48,12 +52,7 @@ class ChannelDatabase(context: Context) :
                     put("tvg_id", channel.tvgId)
                     put("is_favorite", if (channel.streamUrl in favoriteUrls) 1 else 0)
                 }
-                db.insertWithOnConflict(
-                    "channels",
-                    null,
-                    values,
-                    SQLiteDatabase.CONFLICT_REPLACE
-                )
+                db.insertOrThrow("channels", null, values)
             }
             db.setTransactionSuccessful()
         } finally {
